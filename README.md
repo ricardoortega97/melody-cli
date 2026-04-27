@@ -19,6 +19,89 @@ The result is a CLI that accepts inputs like `"late night studying"` or `"high e
 
 ## System Architecture
 
+### Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        USER (CLI)                           │
+│         Natural language input  →  "--query" flag           │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     main.py  (CLI entry)                    │
+│  Parses args, routes to RAG pipeline or legacy mode         │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│            src/generation/pipeline.py  (Orchestrator)       │
+│  1. Sends query to retriever                                │
+│  2. Receives top-k candidate songs                          │
+│  3. Passes candidates to existing scorer                    │
+│  4. Attaches confidence score to each result                │
+│  5. Flags low-confidence results with a warning             │
+└──────────┬────────────────────────────────────┬────────────-┘
+           │                                    │
+           ▼                                    ▼
+┌──────────────────────┐            ┌───────────────────────┐
+│ src/retrieval/       │            │ src/generation/       │
+│   retriever.py       │            │   recommender.py      │
+│  - Embeds songs.csv  │            │   (existing scorer)   │
+│    into vector store │            │   score_song()        │
+│  - Embeds user query │            │   vibe_closeness()    │
+│  - Returns top-k     │            │   _build_explanation()│
+│    semantic matches  │            └───────────────────────┘
+└──────────────────────┘
+           │
+           ▼
+┌──────────────────────┐
+│  src/models/         │
+│   base.py            │
+│   local.py           │
+│   gemini.py          │
+│  Embedding backends  │
+└──────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    data/songs.csv                           │
+│  Catalog — source of truth for all song metadata            │
+└─────────────────────────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     logger.py                               │
+│  Logs: query, retrieved songs, scores, confidence,          │
+│  warnings, and errors to melody_cli.log                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+```
+Input (natural language)
+    └─► Query Embedding  →  Vector Store Search  →  Top-k Songs
+                                                         │
+                                                         ▼
+                                              Rule-Based Scoring
+                                              (existing recommender)
+                                                         │
+                                                         ▼
+                                              Confidence Scoring
+                                              (similarity threshold check)
+                                                         │
+                                          ┌──────────────┴──────────────┐
+                                          │                             │
+                                   High confidence               Low confidence
+                                   → Return results          → Return results
+                                                               + WARNING flag
+                                                                         │
+                                                                         ▼
+                                                               Output (CLI table)
+                                                               + Log entry written
+```
+
 ### Data Flow
 
 ### Where Humans Are Involved
@@ -31,7 +114,12 @@ The result is a CLI that accepts inputs like `"late night studying"` or `"high e
 
 ## Architecture Overview
 
-_Short explanation of the system diagram — to be written._
+Two independent paths share the same output format:
+
+- **`--mode`** — rule-based scorer. Ranks all songs against a hardcoded user profile using genre/mood bonuses and audio-feature vibe closeness. No model loading, fully offline.
+- **`--query`** — RAG path. Embeds the natural language input, runs cosine similarity search against `vectors/`, retrieves the top-*k* candidates, and returns them with per-song confidence scores. Triggers a `⚠ LOW CONFIDENCE` warning when the best similarity falls below 0.5.
+
+Both paths emit `(song, score, explanation)` triples rendered in the same CLI table. All sessions are logged to `melody_cli.log`.
 
 ---
 
