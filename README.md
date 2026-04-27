@@ -102,8 +102,6 @@ Input (natural language)
                                                                + Log entry written
 ```
 
-### Data Flow
-
 ### Where Humans Are Involved
 
 - **Setup:** User provides natural language query via `--query` flag.
@@ -138,8 +136,8 @@ source .venv/bin/activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. (Optional) Add Gemini API key for Gemini embeddings
-cp .env.example .env   # set GEMINI_API_KEY — skip if using local model
+# 4. (Optional) Add Gemini API key for Gemini embeddings — skip if using local model
+echo "GEMINI_API_KEY=your_key_here" > .env
 
 # 5. Build the vector store (run once; local model requires no API key)
 python -m src.main --build
@@ -185,12 +183,40 @@ python -m src.main --mode mood_first
 
 ## Sample Interactions
 
-_At least 2–3 examples of inputs and resulting AI outputs — to be filled in after Milestone 2._
+**1. Well-matched query**
+```
+$ python -m src.main --query "late night lofi chill studying"
+RAG Results · Top 5 · query: "late night lofi chill studying"
+#1  Midnight Coding   LoRoom          lofi · chill    0.47
+#2  Library Rain      Paper Lanterns  lofi · chill    0.37
+#3  Focus Flow        LoRoom          lofi · focused  0.35
+⚠  LOW CONFIDENCE — best match below threshold
+```
+Top 3 are lofi/chill songs — semantically correct. LOW CONFIDENCE fires because the local model's similarity ceiling for a 20-song catalog is ~0.5.
 
+**2. High-confidence query**
+```
+$ python -m src.main --query "high energy intense rock workout"
+RAG Results · Top 5 · query: "high energy intense rock workout"
+#1  Gym Hero      Max Pulse    pop · intense   0.53
+#2  Storm Runner  Voltline     rock · intense  0.39
+```
+Only query to clear the 0.5 threshold. "Workout" vocabulary drives Gym Hero to #1.
+
+**3. Adversarial query (no catalog match)**
+```
+$ python -m src.main --query "trap angry aggressive"
+⚠  LOW CONFIDENCE — best match below threshold
+#1  Midnight Coding  LoRoom  lofi · chill  0.22
+```
+No trap/angry songs exist in catalog. Best similarity is 0.22 — flag fires correctly.
+
+**Demo**
+![demo](/assets/demo_melody.gif)
 
 **Pytest**
-
 ![pytest](/assets/pytest_rag.gif)
+
 ---
 
 ## Design Decisions
@@ -220,7 +246,10 @@ After retrieval, `pipeline.py` reads the similarity score of the top results. `l
 **Missing Vector Store**
 ![log_vector](/assets/logger_vector.gif)
 
-Caught in the `main.py`, it is written to the log with full traceback in the `log_exception()`, preventing the app to never crash silently.
+**Missing API Key (Gemini)**
+![log_api](/assets/log_api.gif)
+
+Exceptions are caught in `main.py`, written to the log with full traceback via `log_exception()`, and surfaced as user-facing messages — the app never crashes silently.
 
 ### Human Evaluation
 
@@ -270,6 +299,11 @@ Currently it is very minimal for misuse risk. A theoretical concern is that a bi
 **Flawed:** During early implementation, the AI suggested using `np.dot` for cosine similarity without first normalising the query vector. This produced incorrect scores for queries where the embedding magnitude wasn't 1.0. The fix was caught during manual testing with adversarial queries that should have scored near zero but didn't.
 
 Also implemented wrong models that were no longer available to use. This resulted with reading documentations from Gemini API Docs to provide the context and changes needed to be made.
+
+---
+## Reflection
+
+There is still a lot to learn about being an AI Engineer. Working on this project helped me understand the pros and cons utilizing AI to add new features, upgrade, or scale. Having the correct context will ensure a swift completion. I learned how to implement test cases, check for limitations, plan and structured my project, and gain a better understanding about trade offs. I used AI as a programming partner throughout the course and it opened new concepts.
 
 ## Resources
 - [Gemini Models](https://ai.google.dev/gemini-api/docs/embeddings?_gl=1*qmhatj*_up*MQ..&gclid=Cj0KCQjw77bPBhC_ARIsAGAjjV_LSD67OK3a-1I0dsf37Q4sJvFl5i2-J1AgK1BgLVioQQFFVDX0xQQaAvulEALw_wcB&gbraid=0AAAAACn9t664QWmBEIdkoR3D6rHForFbQ#gemini-embedding)
