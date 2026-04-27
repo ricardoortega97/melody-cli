@@ -1,18 +1,15 @@
 """
 Command line runner for the Music Recommender Simulation.
-
-This file helps you quickly run and test your recommender.
-
-You will implement the functions in recommender.py:
-- load_songs
-- score_song
-- recommend_songs
 """
 
 import argparse
 import textwrap
 
-from .recommender import load_songs, recommend_songs, SCORING_MODES
+from dotenv import load_dotenv
+load_dotenv()
+
+from .generation.recommender import load_songs, recommend_songs, SCORING_MODES
+from .generation.pipeline import run_query
 
 
 USER_PROFILES = [
@@ -60,8 +57,11 @@ def _print_recommendations(user_prfs: dict, recommendations: list) -> None:
         rest  = [f"{blank} {line:<{W['why']}} {V}" for line in why_lines[1:]]
         return [first] + rest
 
-    name_label    = user_prfs.get("name", "User")
-    profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
+    name_label = user_prfs.get("name", "User")
+    if user_prfs.get("_query_mode"):
+        profile_label = f"query: \"{user_prfs.get('_query', '')}\""
+    else:
+        profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
 
     print()
     print("═" * total_width)
@@ -96,6 +96,15 @@ def _print_recommendations(user_prfs: dict, recommendations: list) -> None:
     print(_border("└", "┴", "┘"))
 
 
+def _build_model(choice: str):
+    """Instantiate the chosen EmbeddingModel. Uses lazy imports to avoid loading heavy deps on --mode path."""
+    if choice == "gemini":
+        from .models.gemini import GeminiEmbeddingModel
+        return GeminiEmbeddingModel()
+    from .models.local import LocalEmbeddingModel
+    return LocalEmbeddingModel()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Music Recommender Simulation")
     parser.add_argument(
@@ -109,14 +118,35 @@ def main() -> None:
         action="store_true",
         help="Embed songs.csv into the vector store and exit.",
     )
+    parser.add_argument(
+        "--query",
+        type=str,
+        default=None,
+        help="Natural language query to retrieve and rank songs via RAG.",
+    )
+    parser.add_argument(
+        "--model",
+        choices=["local", "gemini"],
+        default="local",
+        help="Embedding backend to use with --query or --build (default: local).",
+    )
     args = parser.parse_args()
 
     if args.build:
-        from .rag_retriever import build_vector_store
-        build_vector_store()
+        from .ingestion.builder import build_vector_store
+        model = _build_model(args.model)
+        build_vector_store(model)
         return
 
     songs = load_songs("data/songs.csv")
+
+    if args.query:
+        model = _build_model(args.model)
+        recommendations = run_query(args.query, songs, model=model, k=5)
+        user_prfs = {"name": "RAG Results", "_query_mode": True, "_query": args.query}
+        _print_recommendations(user_prfs, recommendations)
+        return
+
     print(f"\nScoring mode: {args.mode}\n")
 
     for user_prfs in USER_PROFILES:

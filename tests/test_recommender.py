@@ -1,4 +1,4 @@
-from src.recommender import Song, UserProfile, Recommender
+from src.generation.recommender import Song, UserProfile, Recommender
 
 def make_small_recommender() -> Recommender:
     songs = [
