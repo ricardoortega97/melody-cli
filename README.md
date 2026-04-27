@@ -103,4 +103,14 @@ _At least 2–3 examples of inputs and resulting AI outputs — to be filled in 
 
 ## Design Decisions
 
-_Why you built it this way and what trade-offs you made — to be written._
+**Module structure split by RAG stage (`ingestion/`, `retrieval/`, `generation/`, `models/`)**
+The original flat `src/` had `rag_pipeline.py` and `rag_retriever.py` doing too much in one place, so we split by pipeline responsibility, each package owns one stage. The **tradeoff** is more files to navigate, but each module is now independently testable and easier to extend without touching unrelated logic.
+
+**Embedding backend abstraction (`models/base.py`)**
+Local and Gemini embeddings implement the same interface, so the pipeline never cares which backend is active — swapping is a flag, not a code change. The cost is one extra layer of indirection that adds little value while the backend count stays at two.
+
+**`--query` and `--mode` as independent CLI paths**
+RAG and rule-based scoring run separate routes from `main.py` instead of being merged. This preserved the original scorer behavior without regression risk, at the cost of maintaining two code paths long-term.
+
+## Resources
+- [Gemini Models](https://ai.google.dev/gemini-api/docs/embeddings?_gl=1*qmhatj*_up*MQ..&gclid=Cj0KCQjw77bPBhC_ARIsAGAjjV_LSD67OK3a-1I0dsf37Q4sJvFl5i2-J1AgK1BgLVioQQFFVDX0xQQaAvulEALw_wcB&gbraid=0AAAAACn9t664QWmBEIdkoR3D6rHForFbQ#gemini-embedding)
