@@ -142,7 +142,9 @@ def main() -> None:
 
     if args.query:
         model = _build_model(args.model)
-        recommendations = run_query(args.query, songs, model=model, k=5)
+        recommendations, low_confidence = run_query(args.query, songs, model=model, k=5)
+        if low_confidence:
+            print("\n⚠  LOW CONFIDENCE — best match below threshold; consider refining your query or expanding the catalog.")
         user_prfs = {"name": "RAG Results", "_query_mode": True, "_query": args.query}
         _print_recommendations(user_prfs, recommendations)
         return
