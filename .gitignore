@@ -14,6 +14,13 @@ venv/
 # Pytest cache
 .pytest_cache/
 
+# Runtime artifacts
+melody_cli.log
+
+# Vector store (generated via --build; folder tracked via .gitkeep)
+vectors/*.npy
+vectors/*.json
+
 claude.md
 .claude/
 

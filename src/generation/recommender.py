@@ -97,9 +97,7 @@ def load_songs(csv_path: str) -> List[Dict]:
                 "danceability": float(row["danceability"]),
                 "acousticness": float(row["acousticness"]),
             })
-    print(f"Loaded {len(songs)} songs:")
-    for song in songs:
-        print(f"  [{song['id']}] {song['title']} — {song['artist']} ({song['genre']}, {song['mood']})")
+    print(f"Loaded {len(songs)} songs.")
     return songs
 
 

@@ -5,14 +5,15 @@ import numpy as np
 
 from ..models.base import EmbeddingModel
 
-STORE_PATH = Path("data/vector_store.npy")
-IDS_PATH   = Path("data/vector_store_ids.json")
+VECTORS_DIR = Path("vectors")
+STORE_PATH  = VECTORS_DIR / "vector_store.npy"
+IDS_PATH    = VECTORS_DIR / "vector_store_ids.json"
 
 
 def store_paths(model_key: str) -> tuple[Path, Path]:
     return (
-        Path(f"data/vector_store_{model_key}.npy"),
-        Path(f"data/vector_store_{model_key}_ids.json"),
+        VECTORS_DIR / f"vector_store_{model_key}.npy",
+        VECTORS_DIR / f"vector_store_{model_key}_ids.json",
     )
 
 

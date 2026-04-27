@@ -10,6 +10,7 @@ load_dotenv()
 
 from .generation.recommender import load_songs, recommend_songs, SCORING_MODES
 from .generation.pipeline import run_query
+from .logger import log_query_session, log_mode_session, log_exception
 
 
 USER_PROFILES = [
@@ -134,17 +135,41 @@ def main() -> None:
 
     if args.build:
         from .ingestion.builder import build_vector_store
-        model = _build_model(args.model)
-        build_vector_store(model, model_key=args.model)
+        try:
+            model = _build_model(args.model)
+            build_vector_store(model, model_key=args.model)
+        except RuntimeError as e:
+            print(f"\nError: {e}")
+            log_exception("build_vector_store", e)
         return
 
-    songs = load_songs("data/songs.csv")
+    try:
+        songs = load_songs("data/songs.csv")
+    except FileNotFoundError as e:
+        print("\nError: Catalog file 'data/songs.csv' not found. Make sure it exists before running.")
+        log_exception("load_songs", e)
+        return
 
     if args.query:
-        from .retrieval.retriever import store_paths
-        model = _build_model(args.model)
-        s_path, i_path = store_paths(args.model)
-        recommendations, low_confidence = run_query(args.query, songs, model=model, k=5, store_path=s_path, ids_path=i_path)
+        try:
+            from .retrieval.retriever import store_paths
+            model = _build_model(args.model)
+            s_path, i_path = store_paths(args.model)
+            recommendations, low_confidence = run_query(args.query, songs, model=model, k=5, store_path=s_path, ids_path=i_path)
+        except RuntimeError as e:
+            print(f"\nError: {e}")
+            log_exception("run_query", e)
+            return
+        except FileNotFoundError as e:
+            print(f"\nError: {e}")
+            log_exception("run_query", e)
+            return
+        except Exception as e:
+            print(f"\nUnexpected error during query: {e}")
+            log_exception("run_query", e)
+            return
+
+        log_query_session(args.query, recommendations, low_confidence)
         if low_confidence:
             print("\n⚠  LOW CONFIDENCE — best match below threshold; consider refining your query or expanding the catalog.")
         user_prfs = {"name": "RAG Results", "_query_mode": True, "_query": args.query}
@@ -155,6 +180,7 @@ def main() -> None:
 
     for user_prfs in USER_PROFILES:
         recommendations = recommend_songs(user_prfs, songs, k=5, mode=args.mode)
+        log_mode_session(args.mode, user_prfs["name"], recommendations)
         _print_recommendations(user_prfs, recommendations)
 
 
