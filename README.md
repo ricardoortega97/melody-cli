@@ -50,11 +50,13 @@ source .venv/bin/activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Add your API key
-cp .env.example .env   # then fill in your key
+# 4. (Optional) Add Gemini API key for Gemini embeddings
+cp .env.example .env   # set GEMINI_API_KEY — skip if using local model
 
-# 5. Build the vector store (run once)
+# 5. Build the vector store (run once; local model requires no API key)
 python -m src.main --build
+# or with Gemini:
+python -m src.main --build --model gemini
 
 # 6. Run
 python -m src.main --query "late night studying"
@@ -65,19 +67,31 @@ python -m src.main --mode genre_first
 
 ## Commands
 
-| Flag | Description |
-|------|-------------|
-| `--build` | Embed `songs.csv` into the vector store. Run once before using `--query`. |
-| `--query "<text>"` | Natural language search — returns top 5 songs ranked by semantic similarity. |
-| `--mode <strategy>` | Rule-based mode using hardcoded profiles. Choices: `genre_first` (default), `mood_first`, `energy_focused`. |
+| Flag | Values | Description |
+|------|--------|-------------|
+| `--build` | — | Embed `songs.csv` into the vector store. Run once before using `--query`. |
+| `--query "<text>"` | any string | Natural language search — returns top 5 songs ranked by semantic similarity. |
+| `--model` | `local` (default), `gemini` | Embedding backend to use with `--query` or `--build`. |
+| `--mode <strategy>` | `genre_first` (default), `mood_first`, `energy_focused` | Rule-based mode using hardcoded profiles. |
 
 ```bash
+# Build the vector store (local model — no API key required)
 python -m src.main --build
+
+# Build with Gemini embeddings (requires GEMINI_API_KEY)
+python -m src.main --build --model gemini
+
+# Query using local embeddings (default)
 python -m src.main --query "late night studying"
+
+# Query using Gemini embeddings
+python -m src.main --query "late night studying" --model gemini
+
+# Rule-based mode (no vector store needed)
 python -m src.main --mode mood_first
 ```
 
-`--query` and `--mode` are independent paths. `--query` uses the RAG pipeline; `--mode` uses the original rule-based scorer.
+`--query` and `--mode` are independent paths. `--query` uses the RAG pipeline; `--mode` uses the original rule-based scorer. The `--model` flag only applies to RAG paths (`--query`, `--build`).
 
 ---
 
