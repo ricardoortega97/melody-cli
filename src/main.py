@@ -104,7 +104,17 @@ def main() -> None:
         default="genre_first",
         help="Scoring strategy to rank songs by. Choices: " + ", ".join(SCORING_MODES),
     )
+    parser.add_argument(
+        "--build",
+        action="store_true",
+        help="Embed songs.csv into the vector store and exit.",
+    )
     args = parser.parse_args()
+
+    if args.build:
+        from .rag_retriever import build_vector_store
+        build_vector_store()
+        return
 
     songs = load_songs("data/songs.csv")
     print(f"\nScoring mode: {args.mode}\n")
