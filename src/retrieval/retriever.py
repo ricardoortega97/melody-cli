@@ -9,6 +9,13 @@ STORE_PATH = Path("data/vector_store.npy")
 IDS_PATH   = Path("data/vector_store_ids.json")
 
 
+def store_paths(model_key: str) -> tuple[Path, Path]:
+    return (
+        Path(f"data/vector_store_{model_key}.npy"),
+        Path(f"data/vector_store_{model_key}_ids.json"),
+    )
+
+
 def _song_to_text(song: dict) -> str:
     return (
         f"{song['title']} by {song['artist']}. "

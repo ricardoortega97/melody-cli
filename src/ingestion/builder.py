@@ -5,7 +5,7 @@ import numpy as np
 
 from ..generation.recommender import load_songs
 from ..models.base import EmbeddingModel
-from ..retrieval.retriever import STORE_PATH, IDS_PATH, _song_to_text
+from ..retrieval.retriever import STORE_PATH, IDS_PATH, store_paths, _song_to_text
 
 
 def build_vector_store(
@@ -13,7 +13,10 @@ def build_vector_store(
     csv_path: str = "data/songs.csv",
     store_path: Path = STORE_PATH,
     ids_path: Path = IDS_PATH,
+    model_key: str | None = None,
 ) -> None:
+    if model_key:
+        store_path, ids_path = store_paths(model_key)
     songs      = load_songs(csv_path)
     texts      = [_song_to_text(s) for s in songs]
     embeddings = model.encode(texts)

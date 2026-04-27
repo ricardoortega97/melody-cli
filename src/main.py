@@ -135,14 +135,16 @@ def main() -> None:
     if args.build:
         from .ingestion.builder import build_vector_store
         model = _build_model(args.model)
-        build_vector_store(model)
+        build_vector_store(model, model_key=args.model)
         return
 
     songs = load_songs("data/songs.csv")
 
     if args.query:
+        from .retrieval.retriever import store_paths
         model = _build_model(args.model)
-        recommendations, low_confidence = run_query(args.query, songs, model=model, k=5)
+        s_path, i_path = store_paths(args.model)
+        recommendations, low_confidence = run_query(args.query, songs, model=model, k=5, store_path=s_path, ids_path=i_path)
         if low_confidence:
             print("\n⚠  LOW CONFIDENCE — best match below threshold; consider refining your query or expanding the catalog.")
         user_prfs = {"name": "RAG Results", "_query_mode": True, "_query": args.query}

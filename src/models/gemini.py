@@ -5,7 +5,7 @@ from google import genai
 
 from .base import EmbeddingModel
 
-GEMINI_MODEL = "text-embedding-004"
+GEMINI_MODEL = "gemini-embedding-001"
 
 
 class GeminiEmbeddingModel(EmbeddingModel):
